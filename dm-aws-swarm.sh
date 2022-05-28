@@ -51,14 +51,24 @@ done
 SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --filter 'Name=group-name,Values='${CLUSTERNAME}'' --query 'SecurityGroups[].GroupId' --output text)
 
 # Set rules for the swarm
-aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 2377 --source-group $SECURITY_GROUP_ID
-aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 7946 --source-group $SECURITY_GROUP_ID
-aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol udp --port 7946 --source-group $SECURITY_GROUP_ID
-aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 4789 --source-group $SECURITY_GROUP_ID
-aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol udp --port 4789 --source-group $SECURITY_GROUP_ID
+for p in 2377 7946 4789; do \
+	aws ec2 authorize-security-group-ingress \
+		--group-id ${SECURITY_GROUP_ID} \
+		--protocol tcp \
+		--port ${p} \
+		--source-group ${SECURITY_GROUP_ID}
+done
+
+for p in 7946 4789; do \
+	aws ec2 authorize-security-group-ingress \
+		--group-id ${SECURITY_GROUP_ID} \
+		--protocol udp \
+		--port ${p} \
+		--source-group ${SECURITY_GROUP_ID}
+done
 
 # Get first node's private IP
-DS_MGR_IP=$(aws ec2 describe-instances --filters 'Name=tag:Name,Values='${NODE_PREFIX}'1' --output text --query 'Reservations[].Instances[].[PrivateIpAddress]')
+DS_MGR_IP=$(aws ec2 describe-instances --filters 'Name=tag:Name,Values='${NODE_PREFIX}'1' 'Name=instance-state-name,Values=running' --output text --query 'Reservations[].Instances[].[PrivateIpAddress]')
 
 # Set first node's env
 eval $(docker-machine env ${NODE_PREFIX}1)
